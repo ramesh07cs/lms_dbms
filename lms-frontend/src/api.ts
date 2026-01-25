@@ -92,6 +92,17 @@ export const authApi = {
       method: 'GET',
     })
   },
+
+  async getRoles() {
+    return apiRequest<
+      Array<{
+        role_id: number
+        role_name: string
+      }>
+    >('/api/auth/roles', {
+      method: 'GET',
+    })
+  },
 }
 
 // Admin API

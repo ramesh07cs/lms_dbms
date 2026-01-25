@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { authApi } from '../api'
 
-type Role = 'Student' | 'Teacher'
+// Remove specific Role type as we load from DB
+
+
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -18,11 +21,24 @@ export function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [role, setRole] = useState<Role>('Student')
+  const [roleId, setRoleId] = useState<number | ''>('')
+  const [roles, setRoles] = useState<Array<{ role_id: number; role_name: string }>>([])
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    authApi.getRoles().then((res) => {
+      if (res.data) {
+        setRoles(res.data)
+        // Default to Student if exists, else first role
+        const student = res.data.find((r) => r.role_name === 'Student')
+        if (student) setRoleId(student.role_id)
+        else if (res.data.length > 0) setRoleId(res.data[0].role_id)
+      }
+    })
+  }, [])
 
   const errors = useMemo(() => {
     const next: Record<string, string> = {}
@@ -54,9 +70,23 @@ export function RegisterPage() {
 
     setIsSubmitting(true)
     try {
-      await new Promise((r) => setTimeout(r, 900))
+      const res = await authApi.register({
+        name,
+        email,
+        password,
+        phone,
+        role_id: Number(roleId),
+      })
+
+      if (res.error) {
+        toast.error(res.error)
+        return
+      }
+
       toast.success('Account created. Please log in.')
       navigate('/login')
+    } catch (error) {
+      toast.error('Registration failed')
     } finally {
       setIsSubmitting(false)
     }
@@ -120,13 +150,17 @@ export function RegisterPage() {
             <div>
               <label className="text-sm font-medium text-slate-700">Role</label>
               <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
+                value={roleId}
+                onChange={(e) => setRoleId(Number(e.target.value))}
                 onBlur={() => setTouched((t) => ({ ...t, role: true }))}
                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               >
-                <option value="Student">Student</option>
-                <option value="Teacher">Teacher</option>
+                <option value="" disabled>Select a role</option>
+                {roles.map((r) => (
+                  <option key={r.role_id} value={r.role_id}>
+                    {r.role_name}
+                  </option>
+                ))}
               </select>
             </div>
 

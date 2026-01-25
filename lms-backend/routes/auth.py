@@ -170,5 +170,18 @@ def get_current_user():
         
         return jsonify({'user': user.to_dict()}), 200
         
+
+    except Exception as e:
+        return jsonify({'error': str(e), 'status': 500}), 500
+
+@auth_bp.route('/roles', methods=['GET'])
+def get_roles():
+    """Get all available roles"""
+    try:
+        roles = Role.query.all()
+        return jsonify([{
+            'role_id': role.role_id,
+            'role_name': role.role_name
+        } for role in roles]), 200
     except Exception as e:
         return jsonify({'error': str(e), 'status': 500}), 500

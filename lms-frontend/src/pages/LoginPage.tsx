@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { authApi } from '../api'
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -34,21 +35,32 @@ export function LoginPage() {
 
     setIsSubmitting(true)
     try {
-      // Mock auth: accept any non-empty credentials; show invalid credentials example for a specific email.
-      await new Promise((r) => setTimeout(r, 700))
-      if (email.trim().toLowerCase() === 'invalid@example.com') {
-        toast.error('Invalid email or password.')
+      const res = await authApi.login({ email, password })
+
+      if (res.error) {
+        toast.error(res.error)
         return
       }
 
-      if (rememberMe) {
-        localStorage.setItem('lms_remember_email', email.trim())
-      } else {
-        localStorage.removeItem('lms_remember_email')
-      }
+      if (res.data) {
+        if (rememberMe) {
+          localStorage.setItem('lms_remember_email', email.trim())
+        } else {
+          localStorage.removeItem('lms_remember_email')
+        }
 
-      toast.success('Welcome back!')
-      navigate('/admin')
+        toast.success(`Welcome back, ${res.data.user.name}!`)
+
+        if (res.data.user.role_name === 'Admin') {
+          navigate('/admin')
+        } else {
+          // For now, students/teachers don't have a dashboard
+          // navigate('/dashboard') 
+          toast('Student/Teacher portal not implemented yet.', { icon: 'ℹ️' })
+        }
+      }
+    } catch (error) {
+      toast.error('Login failed')
     } finally {
       setIsSubmitting(false)
     }
@@ -133,9 +145,7 @@ export function LoginPage() {
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-500">
-          Tip: use <span className="font-mono">invalid@example.com</span> to see invalid credentials handling.
-        </p>
+
       </div>
     </div>
   )
